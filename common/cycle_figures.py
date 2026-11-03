@@ -14,7 +14,10 @@ from .metadata import FAMILIES, digest
 from .plotting import family_axes, finite_mean, mean_std, palette, pyplot, save, shades, zero_aligned_limits
 
 ACTIVITIES = ("Walking (2X / 7X)","Stair ascent (3X)","Stair descent (4X)","Ramp ascent (5X)","Ramp descent (6X)")
-DISPLAY_GROUPS = ((0,5),(1,),(2,),(3,),(4,))
+CURRENT_ACTIVITIES = ("Walking (2X)",)+ACTIVITIES[1:]
+# Legacy layouts: sensor walking pools 2X and 7X cycles into one mean; currents and step counts use 2X only.
+SENSOR_GROUPS = ((0,5),(1,),(2,),(3,),(4,))
+CURRENT_GROUPS = ((0,),(1,),(2,),(3,),(4,))
 LABELS = ("Fz","My","Knee angle","Knee velocity","Ankle angle","Ankle velocity","Thigh angle","Shank angle")
 PARAM_LABELS = ("Knee stiffness","Knee damping","Knee equilibrium angle","Ankle stiffness","Ankle damping","Ankle equilibrium angle")
 
@@ -27,7 +30,9 @@ def configure(parser):
 def series_grid(info,data,output,current=False,dpi=180,only_family=None):
     plt = pyplot()
     configs,colors = info["configurations"],shades(info["configurations"])
-    mean,_ = mean_std(data["total"],data["square"],data["n"])
+    groups = CURRENT_GROUPS if current else SENSOR_GROUPS
+    pooled = [np.stack([data[key][:,list(g)].sum(axis=1) for g in groups],axis=1) for key in ("total","square","n")]
+    mean,_ = mean_std(*pooled)
     sl = slice(8,10) if current else slice(0,8)
     profiles = mean[...,sl]
     limits = zero_aligned_limits(profiles,configs)
@@ -36,22 +41,20 @@ def series_grid(info,data,output,current=False,dpi=180,only_family=None):
     handles = {}
     x = np.linspace(0,100,100)
     for row,label in enumerate(labels):
-        for col,indices in enumerate(DISPLAY_GROUPS):
+        for col in range(len(groups)):
             ax = base[row,col]
             aa = family_axes(ax,col,4,row,limits)
             for k,config in enumerate(configs):
                 if only_family and config["family"] != only_family:
                     continue
-                for group in indices:
-                    y = profiles[k,group,:,row]
-                    if not np.any(np.isfinite(y)):
-                        continue
-                    line, = aa[config["family"]].plot(x,y,color=colors[k],lw=1.5,alpha=.95,
-                                                     linestyle="--" if group==5 else "-")
-                    handles[config["code"]] = line
+                y = profiles[k,col,:,row]
+                if not np.any(np.isfinite(y)):
+                    continue
+                line, = aa[config["family"]].plot(x,y,color=colors[k],lw=1.5,alpha=.95)
+                handles[config["code"]] = line
             ax.set_xlim(0,100)
             if row == 0:
-                ax.set_title(ACTIVITIES[col],fontsize=13,pad=27)
+                ax.set_title((CURRENT_ACTIVITIES if current else ACTIVITIES)[col],fontsize=13,pad=27)
             if row == len(labels)-1:
                 ax.set_xlabel("Gait cycle [%]")
             if col == 0:
@@ -76,7 +79,9 @@ def heatmaps(info,analysis,output,dpi=180):
     families = defaultdict(lambda:np.zeros(5,dtype=np.int64))
     for r in records:
         d = int(r["decade"])
-        j = 0 if d in (2,7) else d-2
+        if d == 7:
+            continue
+        j = d-2
         n = int(r["sensor_contributing_cycles"])
         family,code = r["family"],r["configuration"]
         key = code.split("+")[0] if family in ("HK","Fox") else code
@@ -100,7 +105,7 @@ def heatmaps(info,analysis,output,dpi=180):
         ax=fig.add_axes([2.2/width,2.4/height,.64*len(keys)/width,.64*5/height])
         im=ax.imshow(fractions,cmap="viridis",vmin=0,vmax=vmax,aspect="auto")
         ax.set_xticks(np.arange(len(keys)),[k[1] for k in keys],rotation=90,fontsize=10)
-        ax.set_yticks(range(5),["Walking (2X/7X)","Stair ascent","Stair descent","Ramp ascent","Ramp descent"])
+        ax.set_yticks(range(5),["Walking (2X)","Stair ascent","Stair descent","Ramp ascent","Ramp descent"])
         for j in range(1,len(keys)):
             if keys[j][0] != keys[j-1][0]:
                 ax.axvline(j-.5,color="white",lw=2.5)
@@ -111,7 +116,7 @@ def heatmaps(info,analysis,output,dpi=180):
         cax=fig.add_axes([(2.2+.64*len(keys)+.18)/width,2.4/height,.13/width,.64*5/height])
         fig.colorbar(im,cax=cax,label="Share within activity (colors only)")
         files+=save(fig,output,name,dpi)
-        write_csv(Path(output)/(name+".csv"),[{"activity":ACTIVITIES[r],"family":family,"configuration":code,
+        write_csv(Path(output)/(name+".csv"),[{"activity":CURRENT_ACTIVITIES[r],"family":family,"configuration":code,
                    "steps":int(counts[r,c]),"color_fraction":float(fractions[r,c])} for c,(family,code) in enumerate(keys) for r in range(5)])
     return files
 
@@ -231,7 +236,7 @@ def run(figure,args):
     else:
         raise ValueError("Unknown shared-analysis figure")
     (output/"methods.md").write_text("# "+figure+"\n\n"+"\n\n".join(info["methods"].values())+
-        "\n\nColors encode device families; shades encode standardized configurations. Family y-ranges are shared across activity columns and their zeros aligned. Display scales are not calibration factors. Gait/current traces are mean-only. 7X walking curves are dashed and overlaid, not concatenated with 2X.\n",encoding="utf-8")
+        "\n\nColors encode device families; shades encode standardized configurations. Family y-ranges are shared across activity columns and their zeros aligned. Display scales are not calibration factors. Gait/current traces are mean-only. Sensor walking means pool 2X and 7X cycles per configuration; current walking means and step counts use 2X only, as in the manuscript scripts.\n",encoding="utf-8")
     manifest(output,figure,{**info["input_hashes"],"shared_analysis":digest(Path(args.analysis_dir)/"execution_manifest.json")},
              {"dpi":args.dpi},extra={"figures":files,"verified_recordings":info["verified_recordings"],"accepted_segments":info["accepted_segments"]})
     print(json.dumps({"figure":figure,"files":files},indent=2))

@@ -27,6 +27,8 @@ STATES = {2: (21,22,23,24), 3: (31,33,39,34), 4: (41,42,43,44),
           5: (51,52,53,54), 6: (61,62,63,64), 7: (70,71,72,73)}
 SPECIAL = {("Fox-0.2+PolyA-1.1", 5): 51, ("Fox-flip-0.1+tf", 6): 61,
            ("HK-1.1+PolyA-1.2", 5): 51, ("HK-1.2+PolyA-1.2", 6): 61}
+STAIR_GAP_ROWS = 150  # 1.5 s at 100 Hz
+MIN_AMPLITUDE_CYCLES = 10  # manuscript amplitude script default
 VERSION = "public_whole_cycle_1.0"
 
 
@@ -55,6 +57,23 @@ def regular_segments(runs, group, anchor):
             seen.add(state)
     if start is not None:
         result.append((start, int(runs[-1,1]), tuple(sorted(seen)), left, "file_end"))
+    return result
+
+
+def stride_segments(runs, group, anchor, max_gap=STAIR_GAP_ROWS):
+    """Stair ascent: anchor entry to next anchor entry. Late stance is labelled 1X between bouts, so a stride may
+    cross at most max_gap level-ground (1X) rows; otherwise the anchor run is kept as a fragment."""
+    result = []
+    entries = np.flatnonzero(runs[:,2] == anchor)
+    for k, i in enumerate(entries):
+        if k+1 < len(entries):
+            mid = runs[i:entries[k+1]]
+            outside = [(int(a),int(b),int(state)) for a,b,state in mid if state not in group]
+            if sum(b-a for a,b,_ in outside) <= max_gap and all(10 <= state <= 19 for *_,state in outside):
+                seen = tuple(sorted({int(state) for state in mid[:,2] if state in group}))
+                result.append((int(runs[i,0]), int(runs[entries[k+1],0]), seen, "anchor", "anchor"))
+                continue
+        result.append((int(runs[i,0]), int(runs[i,1]), (anchor,), "anchor", "no_following_stride"))
     return result
 
 
@@ -271,6 +290,9 @@ def build(dataset, output, workers=4):
                 segments,threshold,smooth_s,min_s = fz_segments(labels,scan["fz"],group,SPECIAL[(code,d)],period or np.nan,
                     forced if (code,d) == ("HK-1.1+PolyA-1.2",5) else None)
                 source = "fz_start_state_upcrossing"
+            elif d == 3 and anchor == 31:
+                segments = stride_segments(scan["runs"],group,anchor)
+                source = "stride_with_level_gap"
             else:
                 segments = regular_segments(scan["runs"],group,anchor) if anchor is not None else []
                 source = "state_recurrence"
@@ -293,7 +315,7 @@ def build(dataset, output, workers=4):
             c["completeness_fallback"] = not bool(strict_available[key])
             if c["duration_s"] < c["min_segment_s"]:
                 c["rejection"] = "below_minimum_duration"
-            elif strict_available[key] and not c["strict_complete"]:
+            elif (strict_available[key] or c["boundary_source"] == "stride_with_level_gap") and not c["strict_complete"]:
                 c["rejection"] = "missing_endpoint_state"
             else:
                 durations[key].append(c["duration_s"])
@@ -353,7 +375,7 @@ def build(dataset, output, workers=4):
             for offset,dest in ((0,3),(8,0)):
                 v = vals[:,j+offset]
                 v = v[np.isfinite(v)]
-                if len(v):
+                if len(v) >= MIN_AMPLITUDE_CYCLES:
                     amplitude[k,dest:dest+3,j] = np.quantile(v,[.5,.1,.9])
     np.savez_compressed(output/"analysis.npz",total=totals,square=squares,n=numbers,
                         phase_total=phase_sum,phase_square=phase_square,phase_n=phase_n,amplitude=amplitude)
@@ -374,6 +396,8 @@ def build(dataset, output, workers=4):
                "rejected_segments":dict(rejections),"hk_5x_reference_fz0_threshold":forced,"reference_fz0_cycles":len(fz0),
                "normalization_points":100,"duration_quantile":.95,"elapsed_s":time.monotonic()-start,
                "methods":{
+                   "stair_ascent":"3X strides run from a 31 entry to the next 31 entry and may cross at most 1.5 s of 1X labels, because the state machine labels late stance as 1X between stair bouts; a 31 run with no following stride within that limit is kept in the inventory as a rejected fragment; 3X never uses the completeness fallback.",
+                   "amplitude":"2X and 7X walking cycles pooled; a configuration/sensor amplitude needs at least 10 cycles, as in the manuscript amplitude script.",
                    "segmentation":"Within each recording; group entry to start-state recurrence/group exit/file end. Entry/exit fragments are retained only under the exported endpoint-presence/fallback and length policy; not all counted segments are independently validated heel-strike strides.",
                    "anchors":"Configuration-wide state-entry counts, not dense sample counts; prefer 21/31/41/51, ordered 61..64 and 70..73; fallback first present. Actual 7X endpoints are the first/last configured states observed per configuration.",
                    "fz":"Four reviewed configuration/activity exceptions. Every smoothed upward Fz crossing within 51/61. Minimum/smoothing durations = 10/21 original annotation rows times verified recording duration / original annotation row count. This row-ratio is an approximate alignment-derived period, not a measured PVD clock. Missing period or Fz means no special-case segments.",

@@ -12,7 +12,7 @@ import numpy as np
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
 from common.calendar_figures import read_aggregates
-from common.cycles import CURRENTS,PARAMETERS,SENSORS,STATES,analyze_record,choose_anchor,fz_segments,normalized_cycle,regular_segments,state_runs
+from common.cycles import CURRENTS,PARAMETERS,SENSORS,STATES,analyze_record,choose_anchor,fz_segments,normalized_cycle,regular_segments,state_runs,stride_segments
 from common.metadata import SCHEMA,digest
 from common.plotting import family_axes,pyplot,zero_aligned_limits
 from figures.fig_representative_sensor_traces import best_shift
@@ -33,6 +33,16 @@ class SharedAnalysisTests(unittest.TestCase):
         a=regular_segments(state_runs(np.repeat([21,22],5)),STATES[2],21)
         b=regular_segments(state_runs(np.repeat([23,24,21],5)),STATES[2],21)
         self.assertNotIn((21,22,23,24),[c[2] for c in a+b])
+
+    def test_stair_ascent_stride_crosses_short_level_gap(self):
+        from collections import Counter
+        labels=np.r_[np.repeat([11,33,39,34,31],10),np.repeat(11,20),np.repeat([33,39,34,31],10),np.repeat(11,200),np.repeat([33,39,34,31],10),np.repeat(22,5)]
+        runs=state_runs(labels)
+        anchor=choose_anchor(Counter({31:10,33:10}),STATES[3],3)
+        self.assertEqual(anchor,31)
+        segments=stride_segments(runs,STATES[3],anchor)
+        self.assertEqual([(c[0],c[1],c[4]) for c in segments],[(40,100,"anchor"),(100,110,"no_following_stride"),(340,350,"no_following_stride")])
+        self.assertEqual(segments[0][2],(31,33,34,39))
 
     def test_anchors_use_entry_counts_and_passive_fallback(self):
         from collections import Counter
