@@ -29,6 +29,7 @@ SPECIAL = {("Fox-0.2+PolyA-1.1", 5): 51, ("Fox-flip-0.1+tf", 6): 61,
            ("HK-1.1+PolyA-1.2", 5): 51, ("HK-1.2+PolyA-1.2", 6): 61}
 STAIR_GAP_ROWS = 150  # 1.5 s at 100 Hz
 MIN_AMPLITUDE_CYCLES = 10  # manuscript amplitude script default
+MIN_STATE_SHARE = 0.10  # endpoint states need >= 10% of the anchor's entries in the configuration
 VERSION = "public_whole_cycle_1.0"
 
 
@@ -75,6 +76,14 @@ def stride_segments(runs, group, anchor, max_gap=STAIR_GAP_ROWS):
                 continue
         result.append((int(runs[i,0]), int(runs[i,1]), (anchor,), "anchor", "no_following_stride"))
     return result
+
+
+def endpoint_states(counts, group, anchor):
+    """First/last group states the configuration uses regularly (>= MIN_STATE_SHARE of anchor entries). Rare states
+    (e.g. GEN3 24/44) would otherwise make the controller's usual shorter sequence count as incomplete."""
+    usual = MIN_STATE_SHARE*counts[anchor] if anchor is not None else 0
+    present = [s for s in group if counts[s] and counts[s] >= usual]
+    return (present[0],present[-1]) if present else (None,None)
 
 
 def choose_anchor(counts, group, decade, min_count=10):
@@ -296,8 +305,7 @@ def build(dataset, output, workers=4):
             else:
                 segments = regular_segments(scan["runs"],group,anchor) if anchor is not None else []
                 source = "state_recurrence"
-            present = [s for s in group if counts[code][s]]
-            first,last_state = (present[0],present[-1]) if present else (None,None)
+            first,last_state = endpoint_states(counts[code],group,anchor)
             for s,e,seen,left,right in segments:
                 strict = first in seen and last_state in seen and len(seen) >= 2
                 cycle = {"record_id":rid,"family":row["family"],"configuration":code,"decade":d,"start":s,"end":e,
@@ -402,7 +410,7 @@ def build(dataset, output, workers=4):
                    "anchors":"Configuration-wide state-entry counts, not dense sample counts; prefer 21/31/41/51, ordered 61..64 and 70..73; fallback first present. Actual 7X endpoints are the first/last configured states observed per configuration.",
                    "fz":"Four reviewed configuration/activity exceptions. Every smoothed upward Fz crossing within 51/61. Minimum/smoothing durations = 10/21 original annotation rows times verified recording duration / original annotation row count. This row-ratio is an approximate alignment-derived period, not a measured PVD clock. Missing period or Fz means no special-case segments.",
                    "hk_5x":"HK-1.1+PolyA-1.2 threshold = median first Fz from strict other-HK 5X cycles after per-configuration 95th length filtering, recomputed in released source units.",
-                   "filter":"Endpoint-state presence when available; otherwise configuration/activity fallback (explicit in inventory), then within-configuration/activity top 5% duration exclusion. Whole-cycle linear normalization once to 100 points.",
+                   "filter":"Endpoint-state presence when available, where endpoints are the first/last group states with at least 10% of the anchor's entries in the configuration (so rare states such as VU GEN3 24/44 do not reject its usual 21-23 and 41-43 sequences); otherwise configuration/activity fallback (explicit in inventory), then within-configuration/activity top 5% duration exclusion. Whole-cycle linear normalization once to 100 points.",
                    "signal_masks":"Channel eligible only if finite and valid for the entire segment; no interpolation across invalid gaps. Missing signals remain NaN. All-zero ankle current segments omitted only for ankle, knee retained.",
                    "parameters":"Mean of finite samples within each contiguous state run, then equal weighting of run means within configuration/state. Population standard deviation; not participant-balanced or clinical tuning variance alone.",
                    "amplitude":"2X and 7X eligible segments pooled, per-cycle mean and peak-to-peak on 100 normalized samples; per-configuration median and 10th/90th percentiles. Counts have channel-specific eligibility.",

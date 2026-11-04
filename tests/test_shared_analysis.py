@@ -12,7 +12,7 @@ import numpy as np
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
 from common.calendar_figures import read_aggregates
-from common.cycles import CURRENTS,PARAMETERS,SENSORS,STATES,analyze_record,choose_anchor,fz_segments,normalized_cycle,regular_segments,state_runs,stride_segments
+from common.cycles import CURRENTS,PARAMETERS,SENSORS,STATES,analyze_record,choose_anchor,endpoint_states,fz_segments,normalized_cycle,regular_segments,state_runs,stride_segments
 from common.metadata import SCHEMA,digest
 from common.plotting import family_axes,pyplot,zero_aligned_limits
 from figures.fig_representative_sensor_traces import best_shift
@@ -43,6 +43,13 @@ class SharedAnalysisTests(unittest.TestCase):
         segments=stride_segments(runs,STATES[3],anchor)
         self.assertEqual([(c[0],c[1],c[4]) for c in segments],[(40,100,"anchor"),(100,110,"no_following_stride"),(340,350,"no_following_stride")])
         self.assertEqual(segments[0][2],(31,33,34,39))
+
+    def test_rare_states_are_not_required_endpoints(self):
+        from collections import Counter
+        # GEN3-like walking: 21 -> 23 -> 21 with an occasional 24.
+        self.assertEqual(endpoint_states(Counter({21:1000,23:990,22:60,24:5}),STATES[2],21),(21,23))
+        self.assertEqual(endpoint_states(Counter({21:1000,22:900,23:950,24:940}),STATES[2],21),(21,24))
+        self.assertEqual(endpoint_states(Counter(),STATES[2],None),(None,None))
 
     def test_anchors_use_entry_counts_and_passive_fallback(self):
         from collections import Counter
