@@ -37,7 +37,7 @@ def main(argv=None):
     for figure in load_registry()["figures"]:
         key=figure["id"]
         if not figure["renderer_implemented"]:
-            results.append({"artifact":key,"status":"excluded_by_owner","reason":figure["next_action"]});continue
+            results.append({"artifact":key,"status":"excluded","reason":figure["next_action"]});continue
         command=["reproduce.py","--figure",key,"--dataset",dataset,"--output-dir",output/key,"--dpi",args.dpi]
         if key in cycle_ids:command += ["--analysis-dir",analysis]
         if key=="activity_distribution":command += ["--workers",args.workers]
@@ -50,7 +50,7 @@ def main(argv=None):
         execute(key,command)
     for table in ("device_sessions","participant_visits","dataset_structure"):
         execute("table_"+table,["tables/tab_"+table+".py","--dataset",dataset,"--output-dir",output/("table_"+table)])
-    results.extend({"artifact":key,"status":"excluded_by_owner","reason":"Leave curated manuscript table unchanged for now"}
+    results.extend({"artifact":key,"status":"excluded","reason":"Curated manuscript table, not computed from the dataset"}
                    for key in ("hardware_specifications","participant_demographics"))
     write_json(output/"batch_report.json",{"artifacts":results,"dataset_modified":False,"manuscript_modified":False})
     return int(any(r["status"]=="failed" for r in results))

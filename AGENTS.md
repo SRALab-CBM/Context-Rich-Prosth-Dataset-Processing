@@ -10,14 +10,14 @@
   Do not invert them again or apply their signs to the eight sensor channels.
 - Native-clock exceptions are not certified 100 Hz data. Do not manufacture
   durations or mix them into verified-clock hours.
-- TF participant codes are retained by owner decision. Sessions and visits are
+- Participants are identified by TF pseudonyms. Sessions and visits are
   neutral identifiers, not chronological counters. Use visit_number and
   elapsed_visit_days. Never reconstruct or publish participant-linked dates.
-- Calendar plots require separate aggregate inputs. The owner authorized internal
-  preparation for review, not release. Render unapproved inputs only with explicit
-  --allow-review-only; never package the private preparation tool or crosswalk.
+- Calendar plots require separate aggregate inputs that are not part of the
+  public dataset. Render inputs without an approval record only with explicit
+  --allow-review-only; never add a date crosswalk or its preparation tool here.
   Clinical images/overview diagram and curated hardware/demographic tables are
-  excluded by owner request and remain unchanged.
+  not reproduced.
 - Build one versioned shared cycle inventory before porting cycle-based figures.
   Segment within each original recording and express duration rules in seconds.
   Normalize each retained full cycle once, not individual states then concatenate.
@@ -39,5 +39,5 @@
   conversion for targeted Fz durations is approximate, not a measured clock.
 - Do not overwrite the dataset, existing outputs or manuscript. Outputs belong
   outside this code tree or under the ignored outputs directory.
-- No repository has been initialized, no remote configured and no license chosen
-  automatically. Dataset and software licensing are separate decisions.
+- Code is MIT-licensed (LICENSE); the dataset is CC0 on Dryad. Do not add data,
+  outputs or private inputs to this repository.

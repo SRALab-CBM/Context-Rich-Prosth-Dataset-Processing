@@ -14,7 +14,7 @@ from .plotting import palette,pyplot,save
 
 def configure(parser):
     parser.add_argument("--aggregates-dir",help="Separately reviewed aggregate CSVs and calendar_review.json; no record-to-date crosswalk")
-    parser.add_argument("--allow-review-only",action="store_true",help="Explicitly render unapproved aggregates locally for owner review; not permission to publish")
+    parser.add_argument("--allow-review-only",action="store_true",help="Explicitly render aggregates that lack an approval record, for local review only")
     parser.add_argument("--dpi",type=int,default=180)
 
 

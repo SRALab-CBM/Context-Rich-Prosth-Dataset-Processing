@@ -50,7 +50,7 @@ class FoundationTests(unittest.TestCase):
         self.assertEqual(sum(f["renderer_implemented"] for f in figures),10)
         for figure in figures:
             if not figure["renderer_implemented"]:
-                self.assertEqual(figure["status"],"excluded_by_owner_non_data_image")
+                self.assertEqual(figure["status"],"excluded_non_data_image")
                 continue
             self.assertTrue(figure["legacy_sources"])
             for source in figure["legacy_sources"]:

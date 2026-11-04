@@ -1,7 +1,7 @@
 {
   "dataset_overview": {
     "legacy_sources": [],
-    "scope": "Excluded non-data image by owner"
+    "scope": "Excluded non-data image"
   },
   "device_usage_over_time": {
     "legacy_sources": [
@@ -45,7 +45,7 @@
   },
   "document_annotation_example": {
     "legacy_sources": [],
-    "scope": "Excluded non-data image by owner"
+    "scope": "Excluded non-data image"
   },
   "controller_parameters": {
     "legacy_sources": [

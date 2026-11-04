@@ -8,9 +8,9 @@ The ten data-driven manuscript figures are traced to generators in
 the porting sources, not runtime dependencies. The standalone code reads public
 CSV files, not the old MAT archive, pickle datasets or cached exploratory results.
 
-The owner excluded the overview diagram and clinical-document illustration from
-this work and requested leaving the curated hardware and demographic tables
-unchanged. No source data were invented for these four artifacts.
+The overview diagram and clinical-document illustration are not data figures,
+and the hardware and demographic tables are curated text, so these four are not
+reproduced here. No source data were invented for them.
 
 ## Shared Cycle Inventory
 
@@ -29,6 +29,16 @@ ordered visitation of all four phases. It can retain group/file-edge fragments,
 so counts are **accepted gait segments**, not independently verified heel-strike
 strides. No segment can bridge two recording files. Long segments above the
 configuration/activity 95th duration percentile are excluded.
+
+Endpoint states are the first and last activity states that a configuration uses
+regularly: at least 10% as many entries as its anchor state. Controllers with
+reduced state sets (VU GEN3 walks with 21/22/23 and descends stairs with
+41/42/43) are therefore not rejected for skipping a state they rarely use.
+
+Stair ascent (3X) runs from one 31 entry to the next. The released labels mark
+the level-ground part of late stance between steps as standing (1X), so a 3X
+stride may cross up to 1.5 s of 1X labels; longer gaps or any other label end it
+as an incomplete fragment, which is rejected rather than used as a fallback.
 
 The four reviewed Fz exceptions are Fox-0.2+PolyA-1.1 in 5X,
 Fox-flip-0.1+tf in 6X, HK-1.1+PolyA-1.2 in 5X and HK-1.2+PolyA-1.2 in 6X.
@@ -64,8 +74,15 @@ unchanged. The unresolved Goldie V0 knee-current polarity remains unavailable.
 Sensor/current curves are means of eligible normalized segments, with family
 colors and configuration shades. All activity columns share each family's
 sensor-specific range, and all four family zeros coincide. Different axis spans
-are display choices, not conversion factors. Dashed 7X curves overlay the
-walking panel without being concatenated with 2X.
+are display choices, not conversion factors. As in the manuscript scripts, the
+sensor walking mean pools 2X and 7X segments per configuration (each segment is
+normalized separately, never concatenated); current walking means and step
+counts use 2X only. Sensor amplitudes need at least 10 segments per device.
+
+Standing (1X) is labeled in the released data, so walking bouts separated by
+standing are separate segments. Earlier internal versions without 1X labels
+joined such bouts, which is why walking segment counts are lower than in early
+drafts of the manuscript.
 
 Amplitude heatmaps show per-configuration medians of per-segment peak-to-peak
 range and time mean on the 100-point 2X/7X representations; 10th/90th percentiles
@@ -96,11 +113,12 @@ No frequency is guessed for native exceptions. Calendar plots do not use
 
 The public participant timeline uses elapsed days from each participant's first
 observed visit, not calendar dates. Calendar figures accept only separate
-month/quarter aggregate schemas. The owner authorized preparing these internally
-for review; this is not approval to publish them. An explicit
-`--allow-review-only` flag is required to render unapproved inputs. Private
-crosswalks/preparation code are not dependencies or contents of the public code
-folder. Aggregate dates still require disclosure review.
+month/quarter aggregate schemas. These aggregates are **not** part of the public
+dataset, because they would expose calendar timing, so the two calendar figures
+cannot be regenerated from the public release. The renderers are kept so the
+method is documented; an explicit `--allow-review-only` flag is required to
+render inputs that lack an approval record. No record-to-date crosswalk or its
+preparation code is a dependency or content of this repository.
 
 For representative traces, all eligible triples in a deterministic per-family
 recording shortlist are compared by knee-angle shape. One global translation
@@ -111,7 +129,7 @@ cycles. Dashed markers refer only to HK reference boundaries. The other devices'
 selected triples and shifts are recorded separately; they need not hit identical
 cycle boundaries in real time.
 
-In the current candidate, no common participant has three consecutive eligible,
+In the released dataset, no common participant has three consecutive eligible,
 labeled 2X cycles in all four families. The default therefore fails rather than
 mix participants silently. An explicit `--allow-mixed-participants` produces a
 clearly labeled alternative with participant IDs and public recording selections.
