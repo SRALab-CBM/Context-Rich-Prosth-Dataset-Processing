@@ -40,3 +40,6 @@ private*/
 # Source configuration must remain tracked, including in the parent workspace.
 !figure_registry.json
 !configs/*.json
+
+# Local agent notes
+AGENTS.md
