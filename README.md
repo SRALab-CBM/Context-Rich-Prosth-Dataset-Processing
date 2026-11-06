@@ -56,6 +56,13 @@ Tables: `python tables/<script>.py --dataset DATASET --output-dir outputs/<name>
 
 How cycles are segmented and averaged: [docs/methods.md](docs/methods.md).
 
+## Explore the data
+
+[notebooks/explore_dataset.ipynb](notebooks/explore_dataset.ipynb) opens `metadata.csv`, one recording and the
+session notes, and scans the notes for identifiers. It reads either the extracted folder or the downloaded ZIPs
+directly (set `DATASET` in the first cell or the `CRP_DATASET` environment variable). It also needs pandas:
+`python -m pip install pandas notebook`.
+
 ## Layout
 
 ```text
@@ -64,6 +71,7 @@ figures/, tables/                one script per figure or table
 common/                          shared cycle analysis, plotting, I/O
 configs/, figure_registry.json   colors, activity definitions, figure list
 tests/                           tests on synthetic data (no dataset needed)
+notebooks/                       interactive tour of the dataset and session notes
 ```
 
 ## License
